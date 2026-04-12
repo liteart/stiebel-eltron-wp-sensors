@@ -1,0 +1,13 @@
+{
+  "domain": "stiebeleltron_isg",
+  "name": "Stiebel Eltron ISG",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/simonhugentobler/homeassistant-stiebeleltron-scraper-plugin",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "requirements": [
+    "beautifulsoup4>=4.12.0"
+  ],
+  "version": "0.1.0"
+}

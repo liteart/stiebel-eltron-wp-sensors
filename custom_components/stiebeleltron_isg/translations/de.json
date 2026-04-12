@@ -1,0 +1,44 @@
+{
+  "title": "Stiebel Eltron ISG",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Stiebel Eltron ISG einrichten",
+        "description": "Verbindet sich mit der ISG-Weboberfläche auf der Wärmepumpen-Statusseite.",
+        "data": {
+          "host": "Host oder IP-Adresse",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "scan_interval": "Abfrageintervall (Minuten)",
+          "timeout": "Timeout (Sekunden)"
+        }
+      },
+      "reconfigure": {
+        "title": "Stiebel Eltron ISG neu konfigurieren",
+        "data": {
+          "host": "Host oder IP-Adresse",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "scan_interval": "Abfrageintervall (Minuten)",
+          "timeout": "Timeout (Sekunden)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Dieser Host ist bereits konfiguriert.",
+      "different_host": "Der konfigurierte Host stimmt nicht mit diesem Eintrag überein.",
+      "reconfigure_successful": "Konfiguration erfolgreich aktualisiert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Stiebel Eltron ISG Optionen",
+        "data": {
+          "scan_interval": "Abfrageintervall (Minuten)",
+          "timeout": "Timeout (Sekunden)"
+        }
+      }
+    }
+  }
+}

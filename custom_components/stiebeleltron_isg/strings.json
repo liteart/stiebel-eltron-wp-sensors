@@ -1,0 +1,44 @@
+{
+  "title": "Stiebel Eltron ISG",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Stiebel Eltron ISG",
+        "description": "Connect to the ISG web interface at the heat pump status page.",
+        "data": {
+          "host": "Host or IP address",
+          "username": "Username",
+          "password": "Password",
+          "scan_interval": "Scan interval (minutes)",
+          "timeout": "Timeout (seconds)"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Stiebel Eltron ISG",
+        "data": {
+          "host": "Host or IP address",
+          "username": "Username",
+          "password": "Password",
+          "scan_interval": "Scan interval (minutes)",
+          "timeout": "Timeout (seconds)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This host is already configured.",
+      "different_host": "The configured host does not match this existing entry.",
+      "reconfigure_successful": "Configuration updated successfully."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Stiebel Eltron ISG options",
+        "data": {
+          "scan_interval": "Scan interval (minutes)",
+          "timeout": "Timeout (seconds)"
+        }
+      }
+    }
+  }
+}

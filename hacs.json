@@ -1,0 +1,15 @@
+{
+  "name": "Stiebel Eltron ISG",
+  "content_in_root": false,
+  "country": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "domains": [
+    "stiebeleltron_isg"
+  ],
+  "homeassistant": "2025.1.4",
+  "iot_class": "Local Polling",
+  "render_readme": true
+}

@@ -1,0 +1,206 @@
+### T00 — Documentation bootstrap
+- [x] **T00 (DONE)** Create project charter and task tracker  
+  **Deliverables**
+  - `AGENTS.md` describing project scope, architecture direction, and workflow
+  - `TASKS.md` describing tracked implementation tasks with status fields
+  **Validation**
+  - Documentation exists in the project root
+  **Commit**
+  - `docs: add project charter and task tracker`
+
+### T01 — Repository bootstrap
+- [x] **T01 (DONE)** Initialize git-backed HACS-compatible integration skeleton  
+  **Deliverables**
+  - git repository initialized for the project
+  - `README.md`
+  - `.gitignore`
+  - `hacs.json`
+  - `custom_components/stiebeleltron_isg/` package scaffold
+  - `manifest.json`
+  **Validation**
+  - Repository has the expected top-level structure for a HACS custom integration
+  **Commit**
+  - `chore: bootstrap hacs integration repository`
+
+### T02 — Constants and config flow
+- [x] **T02 (DONE)** Add integration constants and UI-based setup flow  
+  **Deliverables**
+  - `const.py`
+  - `config_flow.py`
+  - `strings.json`
+  - fields for host/IP, username, and password
+  - username and password optional
+  **Validation**
+  - config flow validates required host input
+  - config entry can be created with or without credentials
+  **Commit**
+  - `feat: add config flow for isg connection settings`
+
+### T03 — Main integration: fetch `?s=1,1`, handle login, and publish all metrics
+- [x] **T03 (DONE)** Implement the primary ISG integration flow for the heat pump details page  
+  **Deliverables**
+  - always build the target URL from the configured host as `http://<host>/?s=1,1`
+  - request `?s=1,1` first for every refresh cycle
+  - detect whether the response is the login page or the heat pump details page
+  - if the login page is returned:
+    - submit the login form using the optional configured `user` and `pass` fields
+    - preserve session state or cookies as required by the ISG
+    - fail with a clear authentication error if credentials are required but missing or invalid
+  - if the details page is returned directly:
+    - continue without authentication
+  - scrape every metric shown on the `WÄRMEPUMPE` page and map it into normalized sensor definitions
+  - expose all scraped metrics to Home Assistant as sensors
+  **Metric coverage**
+  - `PROZESSDATEN`
+    - `RÜCKLAUFTEMPERATUR`
+    - `VORLAUFTEMPERATUR`
+    - `VERDAMPFERTEMPERATUR`
+    - `VERDICHTEREINTRITTSTEMPERATUR`
+    - `HEISSGASTEMPERATUR`
+    - `VERFLÜSSIGERTEMPERATUR`
+    - `ÖLSUMPFTEMPERATUR`
+    - `DRUCK NIEDERDRUCK`
+    - `DRUCK HOCHDRUCK`
+    - `WP WASSERVOLUMENSTROM`
+    - `STROM INVERTER`
+    - `SPANNUNG INVERTER`
+    - `ISTDREHZAHL VERDICHTER`
+    - `SOLLDREHZAHL VERDICHTER`
+    - `RÜCKLAUFTEMPERATUR WÄRMEQUELLE`
+    - `VORLAUFTEMPERATUR WÄRMEQUELLE`
+    - `WÄRMEQUELLENDRUCK`
+    - `LEISTUNG WÄRMEQUELLENPUMPE`
+    - `INVERTER AUFNAHMELEISTUNG`
+  - `WÄRMEMENGE`
+    - `VD HEIZEN TAG`
+    - `VD HEIZEN SUMME`
+    - `VD WARMWASSER TAG`
+    - `VD WARMWASSER SUMME`
+    - `NHZ HEIZEN SUMME`
+    - `NHZ WARMWASSER SUMME`
+  - `LEISTUNGSAUFNAHME`
+    - `VD HEIZEN TAG`
+    - `VD HEIZEN SUMME`
+    - `VD WARMWASSER TAG`
+    - `VD WARMWASSER SUMME`
+  - `LAUFZEIT`
+    - `VD HEIZEN`
+    - `VD WARMWASSER`
+    - `NHZ 1`
+    - `NHZ 2`
+    - `NHZ 1/2`
+  - `STARTS`
+    - `VERDICHTER`
+  **Validation**
+  - integration works when `?s=1,1` immediately returns the details page
+  - integration works when `?s=1,1` first returns the login form and then the details page after authentication
+  - the parser extracts values from all tables on the provided `WÄRMEPUMPE` page sample
+  - units and numeric values are normalized consistently for Home Assistant sensors
+  - missing or changed single fields do not break the full update
+  **Commit**
+  - `feat: implement main isg heat pump integration flow`
+
+### T04 — HTTP client and auth handling
+- [x] **T04 (DONE)** Implement ISG HTTP access with optional authentication  
+  **Deliverables**
+  - HTTP client module for the ISG web interface
+  - support for unauthenticated requests
+  - support for optional username/password authentication
+  - timeout and connection error handling
+  **Validation**
+  - request logic behaves correctly for auth and no-auth configurations
+  **Commit**
+  - `feat: add isg http client with optional authentication`
+
+### T05 — Status page scraper
+- [x] **T05 (DONE)** Scrape the ISG status page and normalize fields  
+  **Deliverables**
+  - scraper module that reads the HTML status page
+  - parsing logic for metrics and energy usage fields
+  - normalized internal keys for parsed values
+  **Validation**
+  - parser tests cover representative HTML samples
+  - missing fields do not break a full scrape
+  **Commit**
+  - `feat: add isg status page scraper`
+
+### T06 — Coordinator and data model
+- [x] **T06 (DONE)** Add coordinator-driven refresh and structured data mapping  
+  **Deliverables**
+  - coordinator module
+  - refresh interval configuration in code
+  - normalized data structure shared by entities
+  **Validation**
+  - coordinator updates fetch and cache scraper data correctly
+  **Commit**
+  - `feat: add coordinator for periodic isg updates`
+
+### T07 — Sensor platform
+- [x] **T07 (DONE)** Expose scraped metrics as Home Assistant sensors  
+  **Deliverables**
+  - `sensor.py`
+  - sensor descriptions for status and energy metrics
+  - availability handling for partial or failed updates
+  **Validation**
+  - entities map correctly from normalized coordinator data
+  **Commit**
+  - `feat: expose isg metrics as sensors`
+
+### T08 — Error handling and diagnostics
+- [x] **T08 (DONE)** Add robust logging, availability, and diagnostics support  
+  **Deliverables**
+  - structured log messages for connection and parsing failures
+  - sanitized diagnostics support if appropriate
+  - no credential leakage in logs
+  **Validation**
+  - logs remain useful while hiding secrets
+  **Commit**
+  - `feat: improve error handling and diagnostics`
+
+### T09 — Tests
+- [x] **T09 (DONE)** Add automated tests for core integration behavior  
+  **Deliverables**
+  - parser tests
+  - config flow tests
+  - coordinator or entity tests where practical
+  **Validation**
+  - test suite runs successfully
+  **Commit**
+  - `test: add coverage for scraper and integration setup`
+
+### T10 — Documentation and HACS readiness
+- [x] **T10 (DONE)** Finalize documentation and repository metadata  
+  **Deliverables**
+  - `README.md` usage instructions
+  - installation steps for git and HACS
+  - configuration notes for authenticated and unauthenticated ISG access
+  - repository metadata needed for HACS import
+  **Validation**
+  - docs describe setup and expected behavior clearly
+  **Commit**
+  - `docs: document installation and configuration`
+
+### T11 — Energy format validation and derived cumulative electrical totals
+- [x] **T11 (DONE)** Validate parsed value formats and add cumulative electrical usage sensors including today  
+  **Deliverables**
+  - parser coverage proving numeric/unit normalization for representative metric types
+  - derived `LEISTUNGSAUFNAHME` metrics for heating and warm water cumulative electrical usage including today
+  - Home Assistant sensors automatically exposing the new derived metrics
+  **Validation**
+  - daily and cumulative electrical usage values are normalized before summing
+  - derived heating and warm water totals include both `TAG` and `SUMME`
+  - automated tests and a live scrape confirm the resulting values and units
+  **Commit**
+  - `feat: add derived cumulative electrical usage sensors`
+
+### T12 — Repository sanitization for publication
+- [x] **T12 (DONE)** Remove device-specific credentials and private host data from tracked content  
+  **Deliverables**
+  - scrub any tracked files that contain the private IP or literal credential examples
+  - replace sensitive test/example data with neutral placeholders
+  - verify the working tree no longer contains the specified secrets
+  **Validation**
+  - repo-wide search returns no matches for the specified IP or credential strings in tracked files
+  - tests still pass after fixture and test-data cleanup
+  **Commit**
+  - `chore: sanitize repository secrets`
