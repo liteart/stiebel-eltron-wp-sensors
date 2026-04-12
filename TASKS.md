@@ -204,3 +204,14 @@
   - tests still pass after fixture and test-data cleanup
   **Commit**
   - `chore: sanitize repository secrets`
+
+### T13 — Project rename
+- [x] **T13 (DONE)** Rename the project display name to `Stiebel Eltron ISG Sensory Data READONLY`
+  **Deliverables**
+  - update HACS metadata, Home Assistant display metadata, and docs to the new project name
+  - keep the integration domain and package path unchanged
+  **Validation**
+  - the renamed project title is consistent across user-facing metadata
+  - tests still pass after the metadata rename
+  **Commit**
+  - `chore: rename project display metadata`

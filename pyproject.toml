@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "homeassistant-stiebeleltron-scraper-plugin"
 version = "0.1.0"
-description = "Home Assistant custom integration for Stiebel Eltron ISG heat pump scraping"
+description = "Home Assistant custom integration for Stiebel Eltron ISG Sensory Data READONLY"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}

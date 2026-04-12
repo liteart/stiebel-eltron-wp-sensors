@@ -1,9 +1,9 @@
 {
-  "title": "Stiebel Eltron ISG",
+  "title": "Stiebel Eltron ISG Sensory Data READONLY",
   "config": {
     "step": {
       "user": {
-        "title": "Stiebel Eltron ISG einrichten",
+        "title": "Stiebel Eltron ISG Sensory Data READONLY einrichten",
         "description": "Verbindet sich mit der ISG-Weboberfläche auf der Wärmepumpen-Statusseite.",
         "data": {
           "host": "Host oder IP-Adresse",
@@ -14,7 +14,7 @@
         }
       },
       "reconfigure": {
-        "title": "Stiebel Eltron ISG neu konfigurieren",
+        "title": "Stiebel Eltron ISG Sensory Data READONLY neu konfigurieren",
         "data": {
           "host": "Host oder IP-Adresse",
           "username": "Benutzername",
@@ -33,7 +33,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Stiebel Eltron ISG Optionen",
+        "title": "Stiebel Eltron ISG Sensory Data READONLY Optionen",
         "data": {
           "scan_interval": "Abfrageintervall (Minuten)",
           "timeout": "Timeout (Sekunden)"

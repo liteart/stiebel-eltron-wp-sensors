@@ -1,4 +1,4 @@
-# Stiebel Eltron ISG for Home Assistant
+# Stiebel Eltron ISG Sensory Data READONLY
 
 Custom Home Assistant integration for Stiebel Eltron heat pumps exposed through the ISG web interface.
 
@@ -31,7 +31,7 @@ The integration always targets the ISG heat pump details page at `http://<host>/
 ## Configuration
 
 1. In Home Assistant, open `Settings` -> `Devices & services` -> `Add integration`.
-2. Search for `Stiebel Eltron ISG`.
+2. Search for `Stiebel Eltron ISG Sensory Data READONLY`.
 3. Enter:
    - `Host or IP address`
    - `Username` if your ISG login is enabled
