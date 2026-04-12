@@ -215,3 +215,16 @@
   - tests still pass after the metadata rename
   **Commit**
   - `chore: rename project display metadata`
+
+### T14 — Additional `ANLAGE` page support
+- [x] **T14 (DONE)** Fetch and expose metrics from `/?s=1,0` in addition to `/?s=1,1`
+  **Deliverables**
+  - keep `/?s=1,1` as the initial/authentication entry page
+  - fetch `/?s=1,0` with the same authenticated session after login or direct access
+  - parse and expose all `ANLAGE` page metrics as Home Assistant sensors
+  - preserve existing `WÄRMEPUMPE` metrics and derived totals
+  **Validation**
+  - automated tests cover the `ANLAGE` page parser and the multi-page client flow
+  - a live scrape confirms combined metrics from both pages
+  **Commit**
+  - `feat: add anlage page scraping`

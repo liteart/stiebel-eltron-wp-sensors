@@ -19,7 +19,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import StiebelEltronIsgConfigEntry
-from .const import DOMAIN, ENTRY_URL_PATH, NAME
+from .const import DOMAIN, HEAT_PUMP_URL_PATH, NAME
 from .scraper import (
     KIND_CURRENT,
     KIND_DURATION,
@@ -143,5 +143,5 @@ class StiebelEltronIsgSensor(CoordinatorEntity, SensorEntity):
             manufacturer="Stiebel Eltron",
             model="ISG",
             sw_version=self.coordinator.data.software_version,
-            configuration_url=f"http://{self._entry.data['host']}{ENTRY_URL_PATH}",
+            configuration_url=f"http://{self._entry.data['host']}{HEAT_PUMP_URL_PATH}",
         )

@@ -2,7 +2,7 @@
 
 Custom Home Assistant integration for Stiebel Eltron heat pumps exposed through the ISG web interface.
 
-The integration always targets the ISG heat pump details page at `http://<host>/?s=1,1`, detects whether the device requires login, optionally submits the configured username and password, and scrapes all visible metrics from the `WÄRMEPUMPE` page into Home Assistant sensors.
+The integration always targets the ISG heat pump details page at `http://<host>/?s=1,1`, detects whether the device requires login, optionally submits the configured username and password, and then scrapes metrics from both the `WÄRMEPUMPE` and `ANLAGE` pages into Home Assistant sensors.
 
 ## Features
 
@@ -10,7 +10,7 @@ The integration always targets the ISG heat pump details page at `http://<host>/
 - UI-based setup flow
 - Host/IP input plus optional username and password
 - Login-page detection and optional authentication
-- HTML scraping of the `WÄRMEPUMPE` details page
+- HTML scraping of the `WÄRMEPUMPE` and `ANLAGE` details pages
 - Sensor exposure for process data, energy, power consumption, runtime, and starts
 - Coordinator-based polling
 - Sanitized diagnostics support
@@ -42,15 +42,22 @@ Notes:
 - The integration builds the target URL as `http://<host>/?s=1,1`.
 - If the ISG returns the details page directly, credentials are not required.
 - If the ISG returns the login page, the integration posts `make=send`, `user`, and `pass` to the same URL.
+- After access is established, the integration fetches both `/?s=1,1` and `/?s=1,0` with the same session.
 
 ## Exposed data
 
-The scraper reads all metrics visible on the `WÄRMEPUMPE` page, including:
+The scraper reads all metrics visible on the `WÄRMEPUMPE` and `ANLAGE` pages, including:
 - `PROZESSDATEN`
 - `WÄRMEMENGE`
 - `LEISTUNGSAUFNAHME`
 - `LAUFZEIT`
 - `STARTS`
+- `RAUMTEMPERATUR`
+- `HEIZUNG`
+- `WARMWASSER`
+- `KÜHLEN`
+- `ELEKTRISCHE NACHERWÄRMUNG`
+- `ENERGIEMANAGEMENT`
 
 ## Development
 

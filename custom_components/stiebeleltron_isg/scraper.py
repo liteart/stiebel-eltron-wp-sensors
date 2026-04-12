@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 METRIC_VALUE_RE = re.compile(r"^\s*([-+]?\d+(?:[.,]\d+)?)\s*([^\d\s].*)?\s*$")
 ENERGY_TO_KWH = {
@@ -65,15 +65,41 @@ def is_login_page(html: str) -> bool:
 def is_heat_pump_page(html: str) -> bool:
     """Return whether the page contains the heat pump data tables."""
     soup = BeautifulSoup(html, "html.parser")
-    return bool(soup.select("table.info td.key")) and soup.select_one("#sub_nav") is not None
+    return _is_info_page(soup, "WÄRMEPUMPE")
+
+
+def is_plant_page(html: str) -> bool:
+    """Return whether the page contains the plant data tables."""
+    soup = BeautifulSoup(html, "html.parser")
+    return _is_info_page(soup, "ANLAGE")
 
 
 def parse_heat_pump_page(html: str) -> IntegrationSnapshot:
     """Parse the ISG heat pump page."""
+    snapshot = parse_info_page(html, expected_page_name="WÄRMEPUMPE")
+    metrics = dict(snapshot.metrics)
+    _add_derived_energy_metrics(metrics)
+    return IntegrationSnapshot(
+        metrics=metrics,
+        sections=snapshot.sections,
+        software_version=snapshot.software_version,
+        logged_in_user=snapshot.logged_in_user,
+    )
+
+
+def parse_plant_page(html: str) -> IntegrationSnapshot:
+    """Parse the ISG plant page."""
+    return parse_info_page(html, expected_page_name="ANLAGE")
+
+
+def parse_info_page(html: str, *, expected_page_name: str | None = None) -> IntegrationSnapshot:
+    """Parse a generic ISG info page with metric tables."""
     soup = BeautifulSoup(html, "html.parser")
     tables = soup.select("table.info")
     if not tables:
         raise ValueError("No metric tables found")
+    if expected_page_name and not _is_info_page(soup, expected_page_name):
+        raise ValueError(f"Expected ISG page {expected_page_name}")
 
     metrics: dict[str, MetricReading] = {}
     sections: list[str] = []
@@ -91,7 +117,7 @@ def parse_heat_pump_page(html: str) -> IntegrationSnapshot:
                 continue
 
             label = _clean_label(key_cell.get_text(" ", strip=True))
-            raw_value = value_cell.get_text(" ", strip=True)
+            raw_value = _extract_value_cell(value_cell)
             key = _normalize_key(section, label)
             metrics[key] = MetricReading(
                 key=key,
@@ -101,16 +127,39 @@ def parse_heat_pump_page(html: str) -> IntegrationSnapshot:
                 **_parse_metric_payload(section, label, raw_value),
             )
 
-    _add_derived_energy_metrics(metrics)
-
     if not metrics:
-        raise ValueError("No metrics parsed from heat pump page")
+        raise ValueError("No metrics parsed from info page")
 
     return IntegrationSnapshot(
         metrics=metrics,
         sections=sections,
         software_version=_optional_text(soup.select_one("#versionsNummer")),
         logged_in_user=_optional_text(soup.select_one("#login strong")),
+    )
+
+
+def merge_snapshots(*snapshots: IntegrationSnapshot) -> IntegrationSnapshot:
+    """Merge multiple page snapshots into one integration snapshot."""
+    metrics: dict[str, MetricReading] = {}
+    sections: list[str] = []
+    software_version: str | None = None
+    logged_in_user: str | None = None
+
+    for snapshot in snapshots:
+        metrics.update(snapshot.metrics)
+        for section in snapshot.sections:
+            if section not in sections:
+                sections.append(section)
+        if software_version is None:
+            software_version = snapshot.software_version
+        if logged_in_user is None:
+            logged_in_user = snapshot.logged_in_user
+
+    return IntegrationSnapshot(
+        metrics=metrics,
+        sections=sections,
+        software_version=software_version,
+        logged_in_user=logged_in_user,
     )
 
 
@@ -146,6 +195,26 @@ def _parse_metric_payload(section: str, label: str, raw_value: str) -> dict[str,
         "state_class": state_class,
         "suggested_display_precision": precision or None,
     }
+
+
+def _extract_value_cell(cell: Tag) -> str:
+    """Extract a stable value representation from a table cell."""
+    text = cell.get_text(" ", strip=True)
+    if text:
+        return text
+
+    image = cell.select_one("img")
+    if image is None:
+        return ""
+
+    src = image.get("src", "")
+    lower_src = src.lower()
+    if "_an" in lower_src:
+        return "An"
+    if "_aus" in lower_src:
+        return "Aus"
+    alt = image.get("alt", "")
+    return _clean_label(alt) or src
 
 
 def _add_derived_energy_metrics(metrics: dict[str, MetricReading]) -> None:
@@ -312,3 +381,12 @@ def _optional_text(element: Any) -> str | None:
         return None
     text = element.get_text(" ", strip=True)
     return text or None
+
+
+def _is_info_page(soup: BeautifulSoup, page_name: str) -> bool:
+    """Return whether the page contains the expected info view."""
+    sub_nav = soup.select_one("#sub_nav")
+    if not bool(soup.select("table.info td.key")) or sub_nav is None:
+        return False
+    title = _optional_text(sub_nav.select_one(".main"))
+    return title == page_name

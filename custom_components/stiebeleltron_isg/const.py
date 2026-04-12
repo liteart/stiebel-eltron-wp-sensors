@@ -14,7 +14,8 @@ DEFAULT_SCAN_INTERVAL = timedelta(minutes=5)
 DEFAULT_TIMEOUT = 15.0
 DEFAULT_SCAN_INTERVAL_MINUTES = int(DEFAULT_SCAN_INTERVAL.total_seconds() / 60)
 
-ENTRY_URL_PATH = "/?s=1,1"
+HEAT_PUMP_URL_PATH = "/?s=1,1"
+PLANT_URL_PATH = "/?s=1,0"
 
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_TIMEOUT = "timeout"

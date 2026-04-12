@@ -15,23 +15,33 @@ from custom_components.stiebeleltron_isg.client import (
 
 
 @pytest.mark.asyncio
-async def test_client_fetches_snapshot_without_auth(heat_pump_page: str) -> None:
+async def test_client_fetches_snapshot_without_auth(
+    heat_pump_page: str,
+    anlage_page: str,
+) -> None:
     """The client should parse the heat pump page directly when no auth is required."""
     client = StiebelEltronIsgClient(
         session=MagicMock(spec=ClientSession),
         host="isg-no-auth.local",
         timeout=5,
     )
-    client._async_request = AsyncMock(return_value=heat_pump_page)  # type: ignore[method-assign]
+    client._async_request = AsyncMock(  # type: ignore[method-assign]
+        side_effect=[heat_pump_page, anlage_page]
+    )
 
     snapshot = await client.async_get_snapshot()
 
-    assert len(snapshot.metrics) == 37
+    assert len(snapshot.metrics) == 67
     assert snapshot.software_version == "v12.2.3"
+    assert snapshot.metrics["heizung__aussentemperatur"].value == 8.9
 
 
 @pytest.mark.asyncio
-async def test_client_fetches_snapshot_with_auth(login_page: str, heat_pump_page: str) -> None:
+async def test_client_fetches_snapshot_with_auth(
+    login_page: str,
+    heat_pump_page: str,
+    anlage_page: str,
+) -> None:
     """The client should log in when the ISG requires authentication."""
     client = StiebelEltronIsgClient(
         session=MagicMock(spec=ClientSession),
@@ -41,13 +51,14 @@ async def test_client_fetches_snapshot_with_auth(login_page: str, heat_pump_page
         timeout=5,
     )
     client._async_request = AsyncMock(  # type: ignore[method-assign]
-        side_effect=[login_page, heat_pump_page]
+        side_effect=[login_page, heat_pump_page, login_page, anlage_page]
     )
 
     snapshot = await client.async_get_snapshot()
 
     assert snapshot.logged_in_user == "demo_user"
     assert snapshot.metrics["starts__verdichter"].value == 3287
+    assert snapshot.metrics["energiemanagement__deaktiviert"].value == "An"
 
 
 @pytest.mark.asyncio

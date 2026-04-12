@@ -34,6 +34,12 @@ def heat_pump_page() -> str:
 
 
 @pytest.fixture
+def anlage_page() -> str:
+    """Return the sample plant details page."""
+    return (FIXTURES_PATH / "anlage_page.html").read_text(encoding="utf-8")
+
+
+@pytest.fixture
 def no_auth_host() -> str:
     """Return a fake host for unauthenticated access."""
     return "isg-no-auth.local"
