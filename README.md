@@ -11,6 +11,7 @@ The integration always targets the ISG heat pump details page at `http://<host>/
 - Host/IP input plus optional username and password
 - Login-page detection and optional authentication
 - HTML scraping of the `WÄRMEPUMPE` and `ANLAGE` details pages
+- Optional readings from energy balance, plant and heat-pump status, and heat-pump analysis
 - Sensor exposure for process data, energy, power consumption, runtime, and starts
 - Coordinator-based polling
 - Sanitized diagnostics support
@@ -43,6 +44,8 @@ Notes:
 - If the ISG returns the details page directly, credentials are not required.
 - If the ISG returns the login page, the integration posts `make=send`, `user`, and `pass` to the same URL.
 - After access is established, the integration fetches both `/?s=1,1` and `/?s=1,0` with the same session.
+- Additional information pages are polled sequentially when available; unsupported pages do not
+  prevent the main readings from updating. Available readings depend on the ISG and firmware.
 
 ## Exposed data
 

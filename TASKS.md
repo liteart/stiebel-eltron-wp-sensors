@@ -248,3 +248,18 @@
   - Verify form details against the target ISG and test without changing device settings
   **Commit**
   - `feat: add verified ISG controls`
+  **Investigation so far**
+  - Target ISG uses `save.php` with form-encoded JSON; no write has been sent.
+  - Heating circuit 1 is the buffer; circuit 2 is the building underfloor heating.
+  - The target exposes comfort and eco temperatures, cooling options, a party duration,
+    and separate holiday start and end forms. Write verification and entities remain open.
+
+### T17 — Additional information-page sensors
+- [x] **T17 (DONE)** Read optional energy balance, plant and heat-pump status and analysis pages
+  **Deliverables**
+  - Add separate namespaced readings and retain existing sensor identifiers
+  - Ignore unavailable optional pages while preserving main readings
+  **Validation**
+  - 16 tests and Ruff pass; read-only live scrape found 50 additional readings
+  **Commit**
+  - `feat: expose additional ISG information pages`

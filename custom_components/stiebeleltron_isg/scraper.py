@@ -74,6 +74,11 @@ def is_plant_page(html: str) -> bool:
     return _is_info_page(soup, "ANLAGE")
 
 
+def is_info_page(html: str, page_name: str) -> bool:
+    """Return whether HTML is the requested information page."""
+    return _is_info_page(BeautifulSoup(html, "html.parser"), page_name)
+
+
 def parse_heat_pump_page(html: str) -> IntegrationSnapshot:
     """Parse the ISG heat pump page."""
     snapshot = parse_info_page(html, expected_page_name="WÄRMEPUMPE")
@@ -92,7 +97,9 @@ def parse_plant_page(html: str) -> IntegrationSnapshot:
     return parse_info_page(html, expected_page_name="ANLAGE")
 
 
-def parse_info_page(html: str, *, expected_page_name: str | None = None) -> IntegrationSnapshot:
+def parse_info_page(
+    html: str, *, expected_page_name: str | None = None, section_prefix: str = ""
+) -> IntegrationSnapshot:
     """Parse a generic ISG info page with metric tables."""
     soup = BeautifulSoup(html, "html.parser")
     tables = soup.select("table.info")
@@ -108,6 +115,8 @@ def parse_info_page(html: str, *, expected_page_name: str | None = None) -> Inte
         if heading is None:
             continue
         section = _clean_label(heading.get_text(" ", strip=True))
+        if section_prefix:
+            section = f"{section_prefix} {section}"
         sections.append(section)
 
         for row in table.select("tr"):

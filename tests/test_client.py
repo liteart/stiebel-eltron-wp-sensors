@@ -27,7 +27,7 @@ async def test_client_fetches_snapshot_without_auth(
         timeout=5,
     )
     client._async_request = AsyncMock(  # type: ignore[method-assign]
-        side_effect=[heat_pump_page, anlage_page]
+        side_effect=[heat_pump_page, anlage_page, "", "", "", ""]
     )
 
     snapshot = await client.async_get_snapshot()
@@ -52,7 +52,7 @@ async def test_client_fetches_snapshot_with_auth(
         timeout=5,
     )
     client._async_request = AsyncMock(  # type: ignore[method-assign]
-        side_effect=[login_page, heat_pump_page, login_page, anlage_page]
+        side_effect=[login_page, heat_pump_page, login_page, anlage_page, "", "", "", ""]
     )
 
     snapshot = await client.async_get_snapshot()
@@ -104,3 +104,17 @@ async def test_timeout_is_reported_as_connection_failure() -> None:
     client = StiebelEltronIsgClient(session=session, host="isg.local")
     with pytest.raises(StiebelEltronIsgCannotConnectError):
         await client.async_probe()
+
+
+async def test_optional_pages_are_isolated(heat_pump_page: str, anlage_page: str) -> None:
+    """Read additional metrics even when another optional page is unsupported."""
+    extra_page = """<div id="sub_nav"><span class="main">STATUS ANLAGE</span></div>
+    <table class="info"><tr><th>BETRIEBSSTATUS</th></tr>
+    <tr><td class="key">PUMPE</td><td class="value">An</td></tr></table>"""
+    client = StiebelEltronIsgClient(session=MagicMock(spec=ClientSession), host="isg.local")
+    client._async_request = AsyncMock(  # type: ignore[method-assign]
+        side_effect=[heat_pump_page, anlage_page, "", extra_page, "", ""]
+    )
+    snapshot = await client.async_get_snapshot()
+    assert snapshot.metrics["status_anlage_betriebsstatus__pumpe"].value == "An"
+    assert "starts__verdichter" in snapshot.metrics

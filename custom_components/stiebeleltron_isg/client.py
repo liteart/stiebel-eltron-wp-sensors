@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
@@ -11,11 +13,21 @@ from .const import HEAT_PUMP_URL_PATH, PLANT_URL_PATH
 from .scraper import (
     IntegrationSnapshot,
     is_heat_pump_page,
+    is_info_page,
     is_login_page,
     is_plant_page,
     merge_snapshots,
     parse_heat_pump_page,
+    parse_info_page,
     parse_plant_page,
+)
+
+LOGGER = logging.getLogger(__name__)
+EXTRA_PAGES = (
+    ("/?s=1,8", "ENERGIEBILANZ"),
+    ("/?s=2,0", "STATUS ANLAGE"),
+    ("/?s=2,2", "STATUS WÄRMEPUMPE"),
+    ("/?s=2,4", "ANALYSE WÄRMEPUMPE"),
 )
 
 
@@ -109,7 +121,18 @@ class StiebelEltronIsgClient:
             plant_snapshot = parse_plant_page(plant_page)
         except ValueError as err:
             raise StiebelEltronIsgParseError(str(err)) from err
-        return merge_snapshots(heat_pump_snapshot, plant_snapshot)
+        snapshots = [heat_pump_snapshot, plant_snapshot]
+        for path, title in EXTRA_PAGES:
+            try:
+                page = await self._async_fetch_page(
+                    f"http://{self._host}{path}", partial(is_info_page, page_name=title)
+                )
+                snapshots.append(
+                    parse_info_page(page, expected_page_name=title, section_prefix=title)
+                )
+            except (StiebelEltronIsgError, ValueError):
+                LOGGER.debug("Optional ISG page %s unavailable", title)
+        return merge_snapshots(*snapshots)
 
     async def _async_fetch_page(
         self,
