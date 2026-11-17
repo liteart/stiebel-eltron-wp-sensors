@@ -14,7 +14,7 @@ from custom_components.stiebeleltron_isg.scraper import (
     parse_heat_pump_page,
     parse_plant_page,
 )
-from custom_components.stiebeleltron_isg.sensor import StiebelEltronIsgSensor
+from custom_components.stiebeleltron_isg.sensor import StiebelEltronIsgSensor, async_setup_entry
 
 
 def test_sensor_entity_maps_snapshot_data(
@@ -54,3 +54,31 @@ def test_sensor_entity_maps_snapshot_data(
     assert plant.native_value == 1.92
     assert plant.native_unit_of_measurement == "bar"
     assert status.native_value == "An"
+
+
+async def test_sensor_availability_and_late_discovery(heat_pump_page: str) -> None:
+    """Missing and newly appearing values are handled across updates."""
+    snapshot = parse_heat_pump_page(heat_pump_page)
+    first_key, second_key = list(snapshot.metrics)[:2]
+    readings = dict(snapshot.metrics)
+    snapshot.metrics.clear()
+    snapshot.metrics[first_key] = readings[first_key]
+    coordinator = MagicMock()
+    coordinator.data = snapshot
+    coordinator.last_update_success = True
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_HOST: "isg.local"})
+    entry.runtime_data = SimpleNamespace(coordinator=coordinator)
+    added = []
+    await async_setup_entry(MagicMock(), entry, lambda entities: added.extend(entities))
+    assert len(added) == 1
+    sensor = added[0]
+    assert sensor.available
+    coordinator.last_update_success = False
+    assert not sensor.available
+    coordinator.last_update_success = True
+    snapshot.metrics.clear()
+    assert not sensor.available
+    assert sensor.native_value == readings[first_key].value
+    snapshot.metrics[second_key] = readings[second_key]
+    coordinator.async_add_listener.call_args.args[0]()
+    assert len(added) == 2

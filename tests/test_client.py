@@ -9,6 +9,7 @@ from aiohttp import ClientSession
 
 from custom_components.stiebeleltron_isg.client import (
     StiebelEltronIsgAuthRequiredError,
+    StiebelEltronIsgCannotConnectError,
     StiebelEltronIsgClient,
     StiebelEltronIsgInvalidAuthError,
 )
@@ -94,3 +95,12 @@ async def test_client_rejects_invalid_credentials(
 
     with pytest.raises(StiebelEltronIsgInvalidAuthError):
         await client.async_get_snapshot()
+
+
+async def test_timeout_is_reported_as_connection_failure() -> None:
+    """Timeouts are translated into the integration's connection error."""
+    session = MagicMock(spec=ClientSession)
+    session.request.side_effect = TimeoutError()
+    client = StiebelEltronIsgClient(session=session, host="isg.local")
+    with pytest.raises(StiebelEltronIsgCannotConnectError):
+        await client.async_probe()

@@ -73,10 +73,17 @@ async def async_setup_entry(
 ) -> None:
     """Set up the sensor entities from a config entry."""
     coordinator = entry.runtime_data.coordinator
-    async_add_entities(
-        StiebelEltronIsgSensor(entry, metric.key)
-        for metric in coordinator.data.metrics.values()
-    )
+    known_keys: set[str] = set()
+
+    def add_new_sensors() -> None:
+        """Create entities when a metric first appears."""
+        new_keys = coordinator.data.metrics.keys() - known_keys
+        if new_keys:
+            known_keys.update(new_keys)
+            async_add_entities(StiebelEltronIsgSensor(entry, key) for key in sorted(new_keys))
+
+    add_new_sensors()
+    entry.async_on_unload(coordinator.async_add_listener(add_new_sensors))
 
 
 class StiebelEltronIsgSensor(CoordinatorEntity, SensorEntity):
@@ -90,6 +97,7 @@ class StiebelEltronIsgSensor(CoordinatorEntity, SensorEntity):
         self._entry = entry
         self._metric_key = metric_key
         metric = self.metric
+        self._last_metric = metric
         self._attr_unique_id = f"{entry.entry_id}_{metric.key}"
         self._attr_name = f"{metric.label} ({metric.section.title()})"
         self._attr_suggested_display_precision = metric.suggested_display_precision
@@ -98,7 +106,11 @@ class StiebelEltronIsgSensor(CoordinatorEntity, SensorEntity):
     @property
     def metric(self) -> MetricReading:
         """Return the current metric from coordinator data."""
-        return self.coordinator.data.metrics[self._metric_key]
+        metric = self.coordinator.data.metrics.get(self._metric_key)
+        if metric is not None:
+            self._last_metric = metric
+            return metric
+        return self._last_metric
 
     @property
     def native_value(self):
@@ -132,7 +144,7 @@ class StiebelEltronIsgSensor(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return availability of the entity."""
-        return self._metric_key in self.coordinator.data.metrics
+        return super().available and self._metric_key in self.coordinator.data.metrics
 
     @property
     def device_info(self) -> DeviceInfo:

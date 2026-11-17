@@ -228,3 +228,23 @@
   - a live scrape confirms combined metrics from both pages
   **Commit**
   - `feat: add anlage page scraping`
+
+### T15 — Critical reliability and privacy fixes
+- [x] **T15 (DONE)** Correct sensor availability, discovery, timeouts and diagnostics redaction
+  **Deliverables**
+  - Mark stale or missing sensors unavailable and discover new metrics after refresh
+  - Handle request timeouts and redact the host from diagnostics
+  **Validation**
+  - 15 regression tests pass; Ruff passes
+  **Commit**
+  - `fix: handle sensor availability and request failures`
+
+### T16 — ISG capabilities and controls
+- [ ] **T16 (IN_PROGRESS)** Investigate additional ISG readings and verified writable controls
+  **Deliverables**
+  - Analyze device pages and document supported settings, including heating circuits
+  - Implement verified readings and controls with tests
+  **Validation**
+  - Verify form details against the target ISG and test without changing device settings
+  **Commit**
+  - `feat: add verified ISG controls`

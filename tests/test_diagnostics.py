@@ -27,7 +27,7 @@ async def test_diagnostics_redacts_sensitive_values(
     """Diagnostics should redact configured connection details."""
     entry = MockConfigEntry(
         domain=DOMAIN,
-        title="ISG",
+        title=f"ISG ({no_auth_host})",
         data={
             CONF_HOST: no_auth_host,
             CONF_USERNAME: "demo_user",
@@ -46,6 +46,7 @@ async def test_diagnostics_redacts_sensitive_values(
 
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
 
+    assert no_auth_host not in str(diagnostics)
     assert diagnostics["entry"]["data"][CONF_HOST] == "**REDACTED**"
     assert diagnostics["entry"]["data"][CONF_USERNAME] == "**REDACTED**"
     assert diagnostics["entry"]["data"][CONF_PASSWORD] == "**REDACTED**"

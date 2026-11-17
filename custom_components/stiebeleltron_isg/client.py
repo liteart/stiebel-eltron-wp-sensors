@@ -155,5 +155,5 @@ class StiebelEltronIsgClient:
             ) as response:
                 response.raise_for_status()
                 return await response.text()
-        except ClientError as err:
+        except (ClientError, TimeoutError) as err:
             raise StiebelEltronIsgCannotConnectError(str(err)) from err
