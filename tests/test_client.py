@@ -59,7 +59,7 @@ async def test_client_fetches_snapshot_with_auth(
 
     assert snapshot.logged_in_user == "demo_user"
     assert snapshot.metrics["starts__verdichter"].value == 3287
-    assert snapshot.metrics["energiemanagement__deaktiviert"].value == "An"
+    assert snapshot.metrics["energiemanagement__deaktiviert"].value is True
 
 
 @pytest.mark.asyncio
@@ -116,5 +116,5 @@ async def test_optional_pages_are_isolated(heat_pump_page: str, anlage_page: str
         side_effect=[heat_pump_page, anlage_page, "", extra_page, "", ""]
     )
     snapshot = await client.async_get_snapshot()
-    assert snapshot.metrics["status_anlage_betriebsstatus__pumpe"].value == "An"
+    assert snapshot.metrics["status_anlage_betriebsstatus__pumpe"].value is True
     assert "starts__verdichter" in snapshot.metrics

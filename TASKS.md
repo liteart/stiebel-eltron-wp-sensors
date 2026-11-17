@@ -263,3 +263,15 @@
   - 16 tests and Ruff pass; read-only live scrape found 50 additional readings
   **Commit**
   - `feat: expose additional ISG information pages`
+
+### T18 — Normalize Home Assistant readings
+- [x] **T18 (DONE)** Normalize measurements and expose binary states as binary sensors
+  **Deliverables**
+  - Parse verified binary indicators as booleans and expose Home Assistant binary sensors
+  - Normalize supported units and distinguish cumulative counters from rolling measurements
+  - Preserve unknown values without guessing their meaning and document entity migrations
+  **Validation**
+  - 19 tests and Ruff pass, including Home Assistant entity and state checks
+  - Verified parsing against previously fetched ISG pages: 13 binary states and kWh energy units
+  **Commit**
+  - `feat: normalize ISG readings for Home Assistant`

@@ -8,6 +8,7 @@ from custom_components.stiebeleltron_isg.scraper import (
     is_plant_page,
     merge_snapshots,
     parse_heat_pump_page,
+    parse_info_page,
     parse_plant_page,
 )
 
@@ -45,8 +46,8 @@ def test_parses_heat_pump_page(heat_pump_page: str) -> None:
     assert snapshot.metrics["prozessdaten__inverter_aufnahmeleistung"].unit == "kW"
     assert snapshot.metrics["leistungsaufnahme__vd_heizen_tag"].value == 0.708
     assert snapshot.metrics["leistungsaufnahme__vd_heizen_tag"].unit == "kWh"
-    assert snapshot.metrics["waermemenge__vd_heizen_summe"].value == 16.858
-    assert snapshot.metrics["waermemenge__vd_heizen_summe"].unit == "MWh"
+    assert snapshot.metrics["waermemenge__vd_heizen_summe"].value == 16858
+    assert snapshot.metrics["waermemenge__vd_heizen_summe"].unit == "kWh"
     assert snapshot.metrics["laufzeit__vd_heizen"].value == 5436
     assert snapshot.metrics["laufzeit__vd_heizen"].unit == "h"
     assert snapshot.metrics["starts__verdichter"].state_class == "total_increasing"
@@ -83,9 +84,10 @@ def test_parses_plant_page(anlage_page: str) -> None:
     assert snapshot.metrics["heizung__heizungsdruck"].value == 1.92
     assert snapshot.metrics["heizung__volumenstrom"].unit == "L/min"
     assert snapshot.metrics["heizung__festwertbetrieb"].value == "Aus"
-    assert snapshot.metrics["kuehlen__solltemperatur"].value == "Aus"
-    assert snapshot.metrics["energiemanagement__sg_ready_1"].value == 0
-    assert snapshot.metrics["energiemanagement__deaktiviert"].value == "An"
+    assert snapshot.metrics["kuehlen__solltemperatur"].value is None
+    assert snapshot.metrics["kuehlen__solltemperatur"].unit == "°C"
+    assert snapshot.metrics["energiemanagement__sg_ready_1"].value is False
+    assert snapshot.metrics["energiemanagement__deaktiviert"].value is True
 
 
 def test_merges_heat_pump_and_plant_pages(
@@ -101,4 +103,33 @@ def test_merges_heat_pump_and_plant_pages(
     assert len(snapshot.metrics) == 67
     assert snapshot.metrics["starts__verdichter"].value == 3287
     assert snapshot.metrics["heizung__aussentemperatur"].value == 8.9
-    assert snapshot.metrics["energiemanagement__deaktiviert"].value == "An"
+    assert snapshot.metrics["energiemanagement__deaktiviert"].value is True
+
+
+def test_energy_windows_and_indicators_are_normalized() -> None:
+    """Rolling values are measurements, and unknown binary states stay unknown."""
+    html = """<table class="info"><tr><th>WÄRMEMENGE</th></tr>
+      <tr><td class="key">HEIZEN 1-12 M</td><td class="value">1,057MWh</td></tr>
+      </table><table class="info"><tr><th>BETRIEBSSTATUS</th></tr>
+      <tr><td class="key">PUMPE</td><td class="value">Aus</td></tr>
+      <tr><td class="key">VERDICHTER</td><td class="value">?</td></tr></table>"""
+    snapshot = parse_info_page(html, section_prefix="STATUS ANLAGE")
+    assert snapshot.metrics["status_anlage_betriebsstatus__pumpe"].value is False
+    assert snapshot.metrics["status_anlage_betriebsstatus__verdichter"].value is None
+    energy = parse_info_page(html, section_prefix="ENERGIEBILANZ")
+    reading = energy.metrics["energiebilanz_waermemenge__heizen_1_12_m"]
+    assert (reading.value, reading.unit, reading.state_class) == (1057, "kWh", None)
+
+
+def test_duration_and_difference_classification() -> None:
+    """A remaining time is a measurement, not an increasing runtime counter."""
+    html = """<table class="info"><tr><th>STATUS</th></tr>
+      <tr><td class="key">RESTSTILLSTANDSZEIT</td><td class="value">3min</td></tr>
+      <tr><td class="key">REGELABWEICHUNG</td><td class="value">-0,2K</td></tr></table>"""
+    snapshot = parse_info_page(html)
+    duration = snapshot.metrics["status__reststillstandszeit"]
+    difference = snapshot.metrics["status__regelabweichung"]
+    assert (duration.value, duration.unit, duration.kind, duration.state_class) == (
+        3, "min", "duration", "measurement"
+    )
+    assert (difference.value, difference.unit, difference.state_class) == (-0.2, "K", "measurement")

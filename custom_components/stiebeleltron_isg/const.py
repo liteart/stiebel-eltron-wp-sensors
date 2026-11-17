@@ -8,7 +8,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "stiebeleltron_isg"
 NAME = "Stiebel Eltron ISG Sensory Data READONLY"
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 DEFAULT_SCAN_INTERVAL = timedelta(minutes=5)
 DEFAULT_TIMEOUT = 15.0

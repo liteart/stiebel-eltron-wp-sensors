@@ -47,6 +47,28 @@ Notes:
 - Additional information pages are polled sequentially when available; unsupported pages do not
   prevent the main readings from updating. Available readings depend on the ISG and firmware.
 
+### Normalized readings and existing entities
+
+- ISG energy readings are exposed in kWh, with the original numeric value converted from MWh
+  where necessary. Rolling energy-balance intervals have no state class: they are not increasing
+  counters, and Home Assistant does not support `measurement` for energy-class sensors.
+- Verified on/off indicators, including SG Ready inputs, are binary sensors. Home Assistant
+  represents their boolean states as `on` and `off`; unrecognized states are `unknown`.
+- An inactive temperature value is `unknown` rather than the text `Aus`. Remaining times are
+  duration measurements. Temperature differences in K stay in K and are not absolute temperatures.
+- Unknown device-specific values remain text or numbers without inferred units or semantics;
+  the integration does not guess the meaning of undocumented operating codes.
+- The existing derived electrical totals add `TAG` and `SUMME`; their correctness depends on
+  the ISG's `SUMME` excluding the current day. Verify this behavior for your firmware before
+  using these derived sensors for billing or the Energy dashboard.
+
+This changes existing on/off entities from `sensor.*` to `binary_sensor.*`. Their old registry
+entries and references in automations, dashboards, templates, or scripts are not automatically
+migrated; update those references and remove obsolete entries after checking dependencies. Energy
+sensor entity IDs remain the same, but their native unit may change from MWh to kWh. Check existing
+long-term statistics and Energy dashboard configuration after updating; stored history is not
+rewritten by the integration. Restart Home Assistant after installing the update.
+
 ## Exposed data
 
 The scraper reads all metrics visible on the `WÄRMEPUMPE` and `ANLAGE` pages, including:

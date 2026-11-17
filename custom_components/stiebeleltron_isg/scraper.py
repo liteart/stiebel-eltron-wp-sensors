@@ -17,6 +17,7 @@ ENERGY_TO_KWH = {
 KIND_TEMPERATURE = "temperature"
 KIND_PRESSURE = "pressure"
 KIND_FLOW = "flow"
+KIND_HUMIDITY = "humidity"
 KIND_CURRENT = "current"
 KIND_VOLTAGE = "voltage"
 KIND_FREQUENCY = "frequency"
@@ -25,6 +26,8 @@ KIND_POWER = "power"
 KIND_ENERGY = "energy"
 KIND_DURATION = "duration"
 KIND_COUNT = "count"
+KIND_BINARY = "binary"
+KIND_TEMPERATURE_DIFFERENCE = "temperature_difference"
 
 STATE_MEASUREMENT = "measurement"
 STATE_TOTAL_INCREASING = "total_increasing"
@@ -128,12 +131,13 @@ def parse_info_page(
             label = _clean_label(key_cell.get_text(" ", strip=True))
             raw_value = _extract_value_cell(value_cell)
             key = _normalize_key(section, label)
+            is_binary = _is_binary_field(section, label, value_cell)
             metrics[key] = MetricReading(
                 key=key,
                 section=section,
                 label=label,
                 raw_value=raw_value,
-                **_parse_metric_payload(section, label, raw_value),
+                **_parse_metric_payload(section, label, raw_value, is_binary=is_binary),
             )
 
     if not metrics:
@@ -172,8 +176,46 @@ def merge_snapshots(*snapshots: IntegrationSnapshot) -> IntegrationSnapshot:
     )
 
 
-def _parse_metric_payload(section: str, label: str, raw_value: str) -> dict[str, Any]:
+def _is_binary_field(section: str, label: str, cell: Tag) -> bool:
+    """Recognize only documented indicators, never an inactive numeric setpoint."""
+    if cell.select_one("img[src*='ste-symbol_']"):
+        return True
+    upper = section.upper()
+    if upper == "ENERGIEMANAGEMENT" and label.upper() in {
+        "SG READY 1", "SG READY 2", "DEAKTIVIERT"
+    }:
+        return True
+    return upper in {
+        "STATUS ANLAGE BETRIEBSSTATUS",
+        "STATUS ANLAGE STATUS ANLAGE",
+        "STATUS WÄRMEPUMPE STATUS WÄRMEPUMPE",
+    } and label != "RESTSTILLSTANDSZEIT"
+
+
+def _parse_metric_payload(
+    section: str, label: str, raw_value: str, *, is_binary: bool = False
+) -> dict[str, Any]:
     """Parse a raw metric value."""
+    if is_binary:
+        return {
+            "value": {"an": True, "ein": True, "1": True, "aus": False, "0": False}.get(
+                raw_value.casefold()
+            ),
+            "unit": None,
+            "kind": KIND_BINARY,
+            "state_class": None,
+            "suggested_display_precision": None,
+        }
+    if raw_value.casefold() in {"aus", "--", "---", "-"} and (
+        "TEMPERATUR" in label.upper() or "EINSATZGRENZE" in label.upper()
+    ):
+        return {
+            "value": None,
+            "unit": "°C",
+            "kind": KIND_TEMPERATURE,
+            "state_class": STATE_MEASUREMENT,
+            "suggested_display_precision": None,
+        }
     match = METRIC_VALUE_RE.match(raw_value)
     if not match:
         return {
@@ -195,6 +237,10 @@ def _parse_metric_payload(section: str, label: str, raw_value: str) -> dict[str,
         value = int(value_token)
         precision = 0
 
+    if unit == "MWh":
+        value = round(value * 1000, 6)
+        unit = "kWh"
+        precision = max(precision - 3, 0)
     kind = _infer_kind(label, unit)
     state_class = _infer_state_class(section, label, kind)
     return {
@@ -289,6 +335,8 @@ def _infer_kind(label: str, unit: str | None) -> str | None:
     """Infer the metric kind from the unit and label."""
     if unit == "°C":
         return KIND_TEMPERATURE
+    if unit == "K":
+        return KIND_TEMPERATURE_DIFFERENCE
     if unit == "bar":
         return KIND_PRESSURE
     if unit == "L/min":
@@ -300,16 +348,14 @@ def _infer_kind(label: str, unit: str | None) -> str | None:
     if unit == "Hz":
         return KIND_FREQUENCY
     if unit == "%":
-        return KIND_PERCENTAGE
+        return KIND_HUMIDITY if "FEUCHTE" in label.upper() else KIND_PERCENTAGE
     if unit == "kW":
         return KIND_POWER
     if unit in {"kWh", "MWh"}:
         return KIND_ENERGY
-    if unit == "h":
+    if unit in {"h", "min", "s"}:
         return KIND_DURATION
     if unit is None and "START" in label:
-        return KIND_COUNT
-    if label == "VERDICHTER":
         return KIND_COUNT
     return None
 
@@ -323,21 +369,32 @@ def _infer_state_class(section: str, label: str, kind: str | None) -> str | None
         KIND_TEMPERATURE,
         KIND_PRESSURE,
         KIND_FLOW,
+        KIND_HUMIDITY,
         KIND_CURRENT,
         KIND_VOLTAGE,
         KIND_FREQUENCY,
         KIND_PERCENTAGE,
         KIND_POWER,
+        KIND_TEMPERATURE_DIFFERENCE,
     }:
         return STATE_MEASUREMENT
 
+    if kind == KIND_ENERGY and upper_section.startswith("ENERGIEBILANZ "):
+        # Rolling windows can decrease and are not cumulative energy counters.
+        # Home Assistant's energy device class does not allow MEASUREMENT.
+        return None
     if kind == KIND_ENERGY and "SUMME" in upper_label:
         return STATE_TOTAL_INCREASING
     if kind == KIND_ENERGY:
         return "total"
 
-    if kind in {KIND_DURATION, KIND_COUNT}:
+    if kind == KIND_DURATION:
+        return STATE_TOTAL_INCREASING if upper_section == "LAUFZEIT" else STATE_MEASUREMENT
+    if kind == KIND_COUNT and upper_section == "STARTS":
         return STATE_TOTAL_INCREASING
+
+    if upper_section == "ENERGIEBILANZ EFFIZIENZ":
+        return STATE_MEASUREMENT
 
     if upper_section == "STARTS":
         return STATE_TOTAL_INCREASING

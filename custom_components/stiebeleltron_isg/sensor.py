@@ -12,6 +12,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfTemperature,
     UnitOfTime,
+    UnitOfVolumeFlowRate,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -21,10 +22,13 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import StiebelEltronIsgConfigEntry
 from .const import DOMAIN, HEAT_PUMP_URL_PATH, NAME
 from .scraper import (
+    KIND_BINARY,
     KIND_CURRENT,
     KIND_DURATION,
     KIND_ENERGY,
+    KIND_FLOW,
     KIND_FREQUENCY,
+    KIND_HUMIDITY,
     KIND_POWER,
     KIND_PRESSURE,
     KIND_TEMPERATURE,
@@ -44,8 +48,10 @@ UNIT_MAP = {
     "kW": UnitOfPower.KILO_WATT,
     "%": PERCENTAGE,
     "h": UnitOfTime.HOURS,
+    "min": UnitOfTime.MINUTES,
+    "s": UnitOfTime.SECONDS,
     "bar": "bar",
-    "L/min": "L/min",
+    "L/min": UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
 }
 
 DEVICE_CLASS_MAP = {
@@ -53,6 +59,8 @@ DEVICE_CLASS_MAP = {
     KIND_DURATION: SensorDeviceClass.DURATION,
     KIND_ENERGY: SensorDeviceClass.ENERGY,
     KIND_FREQUENCY: SensorDeviceClass.FREQUENCY,
+    KIND_FLOW: SensorDeviceClass.VOLUME_FLOW_RATE,
+    KIND_HUMIDITY: SensorDeviceClass.HUMIDITY,
     KIND_POWER: SensorDeviceClass.POWER,
     KIND_PRESSURE: SensorDeviceClass.PRESSURE,
     KIND_TEMPERATURE: SensorDeviceClass.TEMPERATURE,
@@ -77,7 +85,10 @@ async def async_setup_entry(
 
     def add_new_sensors() -> None:
         """Create entities when a metric first appears."""
-        new_keys = coordinator.data.metrics.keys() - known_keys
+        new_keys = {
+            key for key, metric in coordinator.data.metrics.items()
+            if metric.kind != KIND_BINARY
+        } - known_keys
         if new_keys:
             known_keys.update(new_keys)
             async_add_entities(StiebelEltronIsgSensor(entry, key) for key in sorted(new_keys))
@@ -86,8 +97,8 @@ async def async_setup_entry(
     entry.async_on_unload(coordinator.async_add_listener(add_new_sensors))
 
 
-class StiebelEltronIsgSensor(CoordinatorEntity, SensorEntity):
-    """Representation of a single ISG metric."""
+class StiebelEltronIsgMetricEntity(CoordinatorEntity):
+    """Common behavior for an ISG metric."""
 
     _attr_has_entity_name = True
 
@@ -113,32 +124,11 @@ class StiebelEltronIsgSensor(CoordinatorEntity, SensorEntity):
         return self._last_metric
 
     @property
-    def native_value(self):
-        """Return the current sensor value."""
-        return self.metric.value
-
-    @property
-    def native_unit_of_measurement(self) -> str | None:
-        """Return the normalized native unit."""
-        return UNIT_MAP.get(self.metric.unit, self.metric.unit)
-
-    @property
-    def device_class(self) -> SensorDeviceClass | None:
-        """Return the Home Assistant device class."""
-        return DEVICE_CLASS_MAP.get(self.metric.kind)
-
-    @property
-    def state_class(self) -> SensorStateClass | None:
-        """Return the Home Assistant state class."""
-        return STATE_CLASS_MAP.get(self.metric.state_class)
-
-    @property
     def extra_state_attributes(self) -> dict[str, str]:
         """Return static metadata for the metric."""
         return {
             "section": self.metric.section,
             "label": self.metric.label,
-            "raw_value": self.metric.raw_value,
         }
 
     @property
@@ -157,3 +147,27 @@ class StiebelEltronIsgSensor(CoordinatorEntity, SensorEntity):
             sw_version=self.coordinator.data.software_version,
             configuration_url=f"http://{self._entry.data['host']}{HEAT_PUMP_URL_PATH}",
         )
+
+
+class StiebelEltronIsgSensor(StiebelEltronIsgMetricEntity, SensorEntity):
+    """A numeric or text ISG reading."""
+
+    @property
+    def native_value(self):
+        """Return the current sensor value."""
+        return self.metric.value
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the normalized native unit."""
+        return UNIT_MAP.get(self.metric.unit, self.metric.unit)
+
+    @property
+    def device_class(self) -> SensorDeviceClass | None:
+        """Return the Home Assistant device class."""
+        return DEVICE_CLASS_MAP.get(self.metric.kind)
+
+    @property
+    def state_class(self) -> SensorStateClass | None:
+        """Return the Home Assistant state class."""
+        return STATE_CLASS_MAP.get(self.metric.state_class)
