@@ -275,3 +275,15 @@
   - Verified parsing against previously fetched ISG pages: 13 binary states and kWh energy units
   **Commit**
   - `feat: normalize ISG readings for Home Assistant`
+
+### T19 — Reliable Home Assistant energy counters
+- [x] **T19 (DONE)** Expose documented cumulative electricity counters without double counting
+  **Deliverables**
+  - Retire unverified daily-plus-total counters and keep documented compressor totals
+  - Keep daily and interval values out of the Energy dashboard
+  - Document separate units, counter resolution, scope, and migration
+  **Validation**
+  - 19 tests and Ruff pass, including numeric HA states, separate °C/%/K/kWh units,
+    cumulative counter metadata and a simulated daily reset
+  **Commit**
+  - `fix: use cumulative ISG energy counters`

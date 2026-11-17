@@ -9,11 +9,6 @@ from typing import Any
 from bs4 import BeautifulSoup, Tag
 
 METRIC_VALUE_RE = re.compile(r"^\s*([-+]?\d+(?:[.,]\d+)?)\s*([^\d\s].*)?\s*$")
-ENERGY_TO_KWH = {
-    "kWh": 1.0,
-    "MWh": 1000.0,
-}
-
 KIND_TEMPERATURE = "temperature"
 KIND_PRESSURE = "pressure"
 KIND_FLOW = "flow"
@@ -84,15 +79,7 @@ def is_info_page(html: str, page_name: str) -> bool:
 
 def parse_heat_pump_page(html: str) -> IntegrationSnapshot:
     """Parse the ISG heat pump page."""
-    snapshot = parse_info_page(html, expected_page_name="WÄRMEPUMPE")
-    metrics = dict(snapshot.metrics)
-    _add_derived_energy_metrics(metrics)
-    return IntegrationSnapshot(
-        metrics=metrics,
-        sections=snapshot.sections,
-        software_version=snapshot.software_version,
-        logged_in_user=snapshot.logged_in_user,
-    )
+    return parse_info_page(html, expected_page_name="WÄRMEPUMPE")
 
 
 def parse_plant_page(html: str) -> IntegrationSnapshot:
@@ -272,65 +259,6 @@ def _extract_value_cell(cell: Tag) -> str:
     return _clean_label(alt) or src
 
 
-def _add_derived_energy_metrics(metrics: dict[str, MetricReading]) -> None:
-    """Add derived cumulative electrical-usage metrics."""
-    _add_combined_energy_metric(
-        metrics,
-        section="LEISTUNGSAUFNAHME",
-        daily_label="VD HEIZEN TAG",
-        cumulative_label="VD HEIZEN SUMME",
-        derived_label="VD HEIZEN GESAMT INKL. HEUTE",
-    )
-    _add_combined_energy_metric(
-        metrics,
-        section="LEISTUNGSAUFNAHME",
-        daily_label="VD WARMWASSER TAG",
-        cumulative_label="VD WARMWASSER SUMME",
-        derived_label="VD WARMWASSER GESAMT INKL. HEUTE",
-    )
-
-
-def _add_combined_energy_metric(
-    metrics: dict[str, MetricReading],
-    *,
-    section: str,
-    daily_label: str,
-    cumulative_label: str,
-    derived_label: str,
-) -> None:
-    """Add a cumulative energy metric that includes the current day."""
-    daily_metric = metrics.get(_normalize_key(section, daily_label))
-    cumulative_metric = metrics.get(_normalize_key(section, cumulative_label))
-    if daily_metric is None or cumulative_metric is None:
-        return
-
-    daily_value = _convert_energy_to_kwh(daily_metric)
-    cumulative_value = _convert_energy_to_kwh(cumulative_metric)
-    if daily_value is None or cumulative_value is None:
-        return
-
-    key = _normalize_key(section, derived_label)
-    metrics[key] = MetricReading(
-        key=key,
-        section=section,
-        label=derived_label,
-        raw_value=f"{cumulative_metric.raw_value} + {daily_metric.raw_value}",
-        value=round(cumulative_value + daily_value, 3),
-        unit="kWh",
-        kind=KIND_ENERGY,
-        state_class=STATE_TOTAL_INCREASING,
-        suggested_display_precision=3,
-    )
-
-
-def _convert_energy_to_kwh(metric: MetricReading) -> float | None:
-    """Convert an energy metric to kWh."""
-    factor = ENERGY_TO_KWH.get(metric.unit or "")
-    if factor is None:
-        return None
-    return float(metric.value) * factor
-
-
 def _infer_kind(label: str, unit: str | None) -> str | None:
     """Infer the metric kind from the unit and label."""
     if unit == "°C":
@@ -383,10 +311,14 @@ def _infer_state_class(section: str, label: str, kind: str | None) -> str | None
         # Rolling windows can decrease and are not cumulative energy counters.
         # Home Assistant's energy device class does not allow MEASUREMENT.
         return None
-    if kind == KIND_ENERGY and "SUMME" in upper_label:
+    if (
+        kind == KIND_ENERGY
+        and upper_section in {"WÄRMEMENGE", "LEISTUNGSAUFNAHME"}
+        and upper_label.endswith(" SUMME")
+    ):
         return STATE_TOTAL_INCREASING
     if kind == KIND_ENERGY:
-        return "total"
+        return None
 
     if kind == KIND_DURATION:
         return STATE_TOTAL_INCREASING if upper_section == "LAUFZEIT" else STATE_MEASUREMENT

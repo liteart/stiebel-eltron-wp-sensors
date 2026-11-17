@@ -32,7 +32,7 @@ async def test_client_fetches_snapshot_without_auth(
 
     snapshot = await client.async_get_snapshot()
 
-    assert len(snapshot.metrics) == 67
+    assert len(snapshot.metrics) == 65
     assert snapshot.software_version == "v12.2.3"
     assert snapshot.metrics["heizung__aussentemperatur"].value == 8.9
 

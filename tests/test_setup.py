@@ -45,7 +45,7 @@ def test_sensor_entity_maps_snapshot_data(
 
     sensor = StiebelEltronIsgSensor(entry, "prozessdaten__ruecklauftemperatur")
     starts = StiebelEltronIsgSensor(entry, "starts__verdichter")
-    combined = StiebelEltronIsgSensor(entry, "leistungsaufnahme__vd_heizen_gesamt_inkl_heute")
+    total = StiebelEltronIsgSensor(entry, "leistungsaufnahme__vd_heizen_summe")
     plant = StiebelEltronIsgSensor(entry, "heizung__heizungsdruck")
     humidity = StiebelEltronIsgSensor(entry, "raumtemperatur__raumfeuchte_2")
     flow = StiebelEltronIsgSensor(entry, "heizung__volumenstrom")
@@ -55,8 +55,9 @@ def test_sensor_entity_maps_snapshot_data(
     assert sensor.native_unit_of_measurement == "°C"
     assert sensor.device_info["configuration_url"] == f"http://{no_auth_host}/?s=1,1"
     assert starts.native_value == 3287
-    assert combined.native_value == 1888.708
-    assert combined.native_unit_of_measurement == "kWh"
+    assert total.native_value == 1888
+    assert total.native_unit_of_measurement == "kWh"
+    assert total.state_class == "total_increasing"
     assert plant.native_value == 1.92
     assert plant.native_unit_of_measurement == "bar"
     assert humidity.device_class == "humidity"
@@ -95,7 +96,9 @@ async def test_sensor_availability_and_late_discovery(heat_pump_page: str) -> No
 async def test_binary_entities_in_home_assistant(hass, heat_pump_page, anlage_page) -> None:
     """Home Assistant creates binary entities with real on/off and unknown states."""
     energy_html = """<table class="info"><tr><th>WÄRMEMENGE</th></tr>
-      <tr><td class="key">HEIZEN 1-12 M</td><td class="value">1,057MWh</td></tr></table>"""
+      <tr><td class="key">HEIZEN 1-12 M</td><td class="value">1,057MWh</td></tr></table>
+      <table class="info"><tr><th>ANALYSE</th></tr>
+      <tr><td class="key">REGELABWEICHUNG</td><td class="value">-0,2K</td></tr></table>"""
     snapshot = merge_snapshots(
         parse_heat_pump_page(heat_pump_page),
         parse_plant_page(anlage_page),
@@ -126,8 +129,41 @@ async def test_binary_entities_in_home_assistant(hass, heat_pump_page, anlage_pa
         assert energy.attributes["device_class"] == "energy"
         assert energy.attributes["unit_of_measurement"] == "kWh"
         assert "state_class" not in energy.attributes
+        total_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_leistungsaufnahme__vd_heizen_summe"
+        )
+        total_state = hass.states.get(total_id)
+        assert float(total_state.state) == 1888
+        assert total_state.attributes["device_class"] == "energy"
+        assert total_state.attributes["state_class"] == "total_increasing"
+        assert total_state.attributes["unit_of_measurement"] == "kWh"
+        daily_key = "leistungsaufnahme__vd_heizen_tag"
+        daily_id = registry.async_get_entity_id("sensor", DOMAIN, f"{entry.entry_id}_{daily_key}")
+        assert "state_class" not in hass.states.get(daily_id).attributes
+        temp_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_prozessdaten__ruecklauftemperatur"
+        )
+        temp = hass.states.get(temp_id)
+        assert float(temp.state) == 49.0
+        assert temp.attributes["unit_of_measurement"] == "°C"
+        humidity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_raumtemperatur__raumfeuchte_2"
+        )
+        humidity = hass.states.get(humidity_id)
+        assert float(humidity.state) == 43.6
+        assert humidity.attributes["unit_of_measurement"] == "%"
+        difference_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_energiebilanz_analyse__regelabweichung"
+        )
+        difference = hass.states.get(difference_id)
+        assert float(difference.state) == -0.2
+        assert difference.attributes["unit_of_measurement"] == "K"
         metric_key = "energiemanagement__deaktiviert"
         coordinator = entry.runtime_data.coordinator
+        snapshot.metrics[daily_key] = replace(snapshot.metrics[daily_key], value=0)
+        coordinator.async_set_updated_data(snapshot)
+        await hass.async_block_till_done()
+        assert hass.states.get(total_id).state == total_state.state
         for value, expected in ((False, "off"), (None, "unknown")):
             snapshot.metrics[metric_key] = replace(snapshot.metrics[metric_key], value=value)
             coordinator.async_set_updated_data(snapshot)

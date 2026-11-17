@@ -50,4 +50,4 @@ async def test_diagnostics_redacts_sensitive_values(
     assert diagnostics["entry"]["data"][CONF_HOST] == "**REDACTED**"
     assert diagnostics["entry"]["data"][CONF_USERNAME] == "**REDACTED**"
     assert diagnostics["entry"]["data"][CONF_PASSWORD] == "**REDACTED**"
-    assert diagnostics["snapshot"]["metric_count"] == 67
+    assert diagnostics["snapshot"]["metric_count"] == 65

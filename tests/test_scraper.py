@@ -33,7 +33,7 @@ def test_parses_heat_pump_page(heat_pump_page: str) -> None:
         "LAUFZEIT",
         "STARTS",
     ]
-    assert len(snapshot.metrics) == 37
+    assert len(snapshot.metrics) == 35
     assert snapshot.metrics["prozessdaten__ruecklauftemperatur"].value == 49.0
     assert snapshot.metrics["prozessdaten__ruecklauftemperatur"].unit == "°C"
     assert snapshot.metrics["prozessdaten__druck_niederdruck"].value == 6.34
@@ -53,14 +53,16 @@ def test_parses_heat_pump_page(heat_pump_page: str) -> None:
     assert snapshot.metrics["starts__verdichter"].state_class == "total_increasing"
     assert snapshot.metrics["starts__verdichter"].value == 3287
 
-    heating_total = snapshot.metrics["leistungsaufnahme__vd_heizen_gesamt_inkl_heute"]
-    warmwater_total = snapshot.metrics["leistungsaufnahme__vd_warmwasser_gesamt_inkl_heute"]
-
-    assert heating_total.value == 1888.708
-    assert heating_total.unit == "kWh"
-    assert heating_total.state_class == "total_increasing"
-    assert warmwater_total.value == 1747.772
-    assert warmwater_total.unit == "kWh"
+    heating_total = snapshot.metrics["leistungsaufnahme__vd_heizen_summe"]
+    warmwater_total = snapshot.metrics["leistungsaufnahme__vd_warmwasser_summe"]
+    assert (heating_total.value, heating_total.unit, heating_total.state_class) == (
+        1888, "kWh", "total_increasing"
+    )
+    assert (warmwater_total.value, warmwater_total.unit, warmwater_total.state_class) == (
+        1746, "kWh", "total_increasing"
+    )
+    assert snapshot.metrics["leistungsaufnahme__vd_heizen_tag"].state_class is None
+    assert "leistungsaufnahme__vd_heizen_gesamt_inkl_heute" not in snapshot.metrics
 
 
 def test_parses_plant_page(anlage_page: str) -> None:
@@ -100,7 +102,7 @@ def test_merges_heat_pump_and_plant_pages(
         parse_plant_page(anlage_page),
     )
 
-    assert len(snapshot.metrics) == 67
+    assert len(snapshot.metrics) == 65
     assert snapshot.metrics["starts__verdichter"].value == 3287
     assert snapshot.metrics["heizung__aussentemperatur"].value == 8.9
     assert snapshot.metrics["energiemanagement__deaktiviert"].value is True

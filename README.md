@@ -50,17 +50,36 @@ Notes:
 ### Normalized readings and existing entities
 
 - ISG energy readings are exposed in kWh, with the original numeric value converted from MWh
-  where necessary. Rolling energy-balance intervals have no state class: they are not increasing
-  counters, and Home Assistant does not support `measurement` for energy-class sensors.
+  where necessary. The ISG's time-window and daily values have no state class: they are not
+  cumulative counters suitable for the Energy dashboard.
 - Verified on/off indicators, including SG Ready inputs, are binary sensors. Home Assistant
   represents their boolean states as `on` and `off`; unrecognized states are `unknown`.
 - An inactive temperature value is `unknown` rather than the text `Aus`. Remaining times are
   duration measurements. Temperature differences in K stay in K and are not absolute temperatures.
 - Unknown device-specific values remain text or numbers without inferred units or semantics;
   the integration does not guess the meaning of undocumented operating codes.
-- The existing derived electrical totals add `TAG` and `SUMME`; their correctness depends on
-  the ISG's `SUMME` excluding the current day. Verify this behavior for your firmware before
-  using these derived sensors for billing or the Energy dashboard.
+
+### Energy dashboard
+
+Add `VD HEIZEN SUMME (Leistungsaufnahme)` and `VD WARMWASSER SUMME (Leistungsaufnahme)` as
+separate individual devices in the Energy dashboard. They expose the ISG's documented cumulative
+compressor electricity totals as numeric kWh with `energy` and `total_increasing` classes. These
+measure the compressor for heating and hot water, not necessarily the complete installation's
+electricity consumption: pumps, controls and electrical backup heating may be excluded. Do not use
+heat-output (`WÄRMEMENGE`) sensors as electrical consumption. The ISG values are estimates, not
+billing-grade measurements. An external electricity meter is needed for the complete system total.
+
+Values displayed by the ISG as MWh to three decimal places change in steps of 1 kWh after conversion,
+so short intervals can appear flat or jump. `TAG` is since midnight; `1-24 h` is an ISG energy-balance
+period, not a documented cumulative counter, and its exact period boundary has not been verified.
+Home Assistant calculates period usage from changes in each cumulative sensor after it starts
+recording, not from the displayed lifetime counter itself.
+
+Older versions exposed derived `GESAMT INKL. HEUTE` sensors that added `TAG` to `SUMME`. These
+have been removed because `SUMME` is already a cumulative total and the addition could double-count.
+Remove those old sensors from Energy dashboard configuration and select the two `SUMME` sensors;
+check existing statistics for incorrect data. Registry entries and historical statistics are not
+automatically deleted or corrected.
 
 This changes existing on/off entities from `sensor.*` to `binary_sensor.*`. Their old registry
 entries and references in automations, dashboards, templates, or scripts are not automatically
