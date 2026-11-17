@@ -72,7 +72,8 @@ To set the holiday period, call the Home Assistant action
 `stiebeleltron_isg.set_holiday_program`, select any entity of the relevant ISG, and enter start and end
 dates. Both dates are sent together and read back. If confirmation or readback fails, check the ISG
 interface before retrying: the device might already have applied some or all of the change. The
-holiday write was tested with simulated ISG responses, not by changing the physical installation.
+holiday write was tested using simulated responses and by writing the existing dates back to the
+original ISG, then reading them again. Changing dates to a different range has not been tested.
 Date ranges outside 2000–2099 or with the end before the start are rejected.
 
 ### Normalized readings and existing entities

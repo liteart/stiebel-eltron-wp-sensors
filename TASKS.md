@@ -247,15 +247,15 @@
   - Identify Heizkreis 1 as Puffer and Heizkreis 2 as Bodenheizung in entity names
   **Validation**
   - Verify form details against read-only target ISG pages; test writes using simulated responses
-  - 29 automated tests and Ruff pass; no real setting was changed
+  - 29 automated tests and Ruff pass; initial implementation used simulated writes
   **Commit**
   - `feat: add verified ISG controls`
   **Investigation so far**
-  - Target ISG uses `save.php` with form-encoded JSON; no physical write was sent.
+  - Target ISG uses `save.php` with form-encoded JSON; live same-value tests are tracked in T20.
   - Heating circuit 1 is the buffer; circuit 2 is the building underfloor heating.
   - The target exposes comfort and eco temperatures, cooling options, a party duration,
     and separate holiday start and end forms. Readback verification is implemented; actual
-    physical writes and advanced configuration fields were not tested.
+    writes to different values and advanced configuration fields were not tested.
 
 ### T17 — Additional information-page sensors
 - [x] **T17 (DONE)** Read optional energy balance, plant and heat-pump status and analysis pages
@@ -290,3 +290,13 @@
     cumulative counter metadata and a simulated daily reset
   **Commit**
   - `fix: use cumulative ISG energy counters`
+
+### T20 — Live verification of unchanged settings
+- [x] **T20 (DONE)** Verify write and readback using the existing ISG values
+  **Deliverables**
+  - Exercise supported settings and holiday dates without changing their requested values
+  **Validation**
+  - All 17 settings and the holiday date range returned success and matched on readback
+  - The test did not exercise changes to different values or validate long-term program behavior
+  **Commit**
+  - `test: document live ISG write verification`
