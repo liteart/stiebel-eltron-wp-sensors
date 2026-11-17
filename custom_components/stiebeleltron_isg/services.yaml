@@ -1,0 +1,21 @@
+set_holiday_program:
+  name: Set holiday program
+  description: Set the start and end dates of the ISG holiday program.
+  fields:
+    entity_id:
+      name: ISG entity
+      description: Select any entity belonging to the ISG device.
+      required: true
+      selector:
+        entity:
+          integration: stiebeleltron_isg
+    start_date:
+      name: Start date
+      required: true
+      selector:
+        date:
+    end_date:
+      name: End date
+      required: true
+      selector:
+        date:

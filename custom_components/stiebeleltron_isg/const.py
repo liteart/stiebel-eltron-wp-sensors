@@ -7,8 +7,14 @@ from datetime import timedelta
 from homeassistant.const import Platform
 
 DOMAIN = "stiebeleltron_isg"
-NAME = "Stiebel Eltron ISG Sensory Data READONLY"
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+NAME = "Stiebel Eltron ISG Sensory Data"
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.NUMBER,
+    Platform.SWITCH,
+    Platform.SELECT,
+]
 
 DEFAULT_SCAN_INTERVAL = timedelta(minutes=5)
 DEFAULT_TIMEOUT = 15.0

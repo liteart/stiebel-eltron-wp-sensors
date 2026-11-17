@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -77,6 +78,7 @@ class StiebelEltronIsgClient:
         self._username = username
         self._password = password
         self._timeout = timeout
+        self._request_lock = asyncio.Lock()
 
     @property
     def host(self) -> str:
@@ -170,13 +172,14 @@ class StiebelEltronIsgClient:
     async def _async_request(self, method: str, url: str, **kwargs) -> str:
         """Perform a request against the ISG."""
         try:
-            async with self._session.request(
-                method,
-                url,
-                timeout=ClientTimeout(total=self._timeout),
-                **kwargs,
-            ) as response:
-                response.raise_for_status()
-                return await response.text()
+            async with self._request_lock:
+                async with self._session.request(
+                    method,
+                    url,
+                    timeout=ClientTimeout(total=self._timeout),
+                    **kwargs,
+                ) as response:
+                    response.raise_for_status()
+                    return await response.text()
         except (ClientError, TimeoutError) as err:
             raise StiebelEltronIsgCannotConnectError(str(err)) from err

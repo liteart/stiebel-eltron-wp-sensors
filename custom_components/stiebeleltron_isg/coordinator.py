@@ -18,9 +18,29 @@ from .client import (
     StiebelEltronIsgParseError,
 )
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES, DOMAIN
+from .controls import IsgControls
 from .scraper import IntegrationSnapshot
 
 LOGGER = logging.getLogger(__name__)
+
+
+class StiebelEltronIsgControlsCoordinator(DataUpdateCoordinator[dict[str, float | bool | str]]):
+    """Poll validated settings separately from the read-only measurements."""
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, controls: IsgControls) -> None:
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=entry,
+            name=f"{DOMAIN}_controls",
+            update_interval=timedelta(
+                minutes=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES)
+            ),
+        )
+        self.controls = controls
+
+    async def _async_update_data(self) -> dict[str, float | bool | str]:
+        return await self.controls.async_read()
 
 
 class StiebelEltronIsgDataUpdateCoordinator(DataUpdateCoordinator[IntegrationSnapshot]):

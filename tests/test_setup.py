@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -106,11 +107,18 @@ async def test_binary_entities_in_home_assistant(hass, heat_pump_page, anlage_pa
     )
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_HOST: "isg.local"})
     entry.add_to_hass(hass)
-    with patch(
-        "custom_components.stiebeleltron_isg.client.StiebelEltronIsgClient.async_get_snapshot",
-        new=AsyncMock(return_value=snapshot),
-    ), patch(
-        "custom_components.stiebeleltron_isg.async_get_clientsession", return_value=MagicMock()
+    with (
+        patch(
+            "custom_components.stiebeleltron_isg.client.StiebelEltronIsgClient.async_get_snapshot",
+            new=AsyncMock(return_value=snapshot),
+        ),
+        patch(
+            "custom_components.stiebeleltron_isg.async_get_clientsession", return_value=MagicMock()
+        ),
+        patch(
+            "custom_components.stiebeleltron_isg.controls.IsgControls.async_read",
+            new=AsyncMock(return_value={}),
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -169,5 +177,54 @@ async def test_binary_entities_in_home_assistant(hass, heat_pump_page, anlage_pa
             coordinator.async_set_updated_data(snapshot)
             await hass.async_block_till_done()
             assert hass.states.get(entity_id).state == expected
+        await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_stop(force=True)
+
+
+async def test_writable_entities_and_holiday_service(hass, heat_pump_page, anlage_page) -> None:
+    """Expose verified controls and route HA actions to their ISG entry."""
+    snapshot = merge_snapshots(parse_heat_pump_page(heat_pump_page), parse_plant_page(anlage_page))
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_HOST: "isg.local"})
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.stiebeleltron_isg.client.StiebelEltronIsgClient.async_get_snapshot",
+            new=AsyncMock(return_value=snapshot),
+        ),
+        patch(
+            "custom_components.stiebeleltron_isg.async_get_clientsession", return_value=MagicMock()
+        ),
+        patch(
+            "custom_components.stiebeleltron_isg.controls.IsgControls.async_read",
+            new=AsyncMock(return_value={"heating_2_comfort": 22.0, "cooling": True}),
+        ),
+        patch(
+            "custom_components.stiebeleltron_isg.controls.IsgControls.async_write", new=AsyncMock()
+        ) as write,
+        patch(
+            "custom_components.stiebeleltron_isg.controls.IsgControls.async_set_holiday",
+            new=AsyncMock(),
+        ) as holiday,
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        registry = er.async_get(hass)
+        entity_id = registry.async_get_entity_id(
+            "number", DOMAIN, f"{entry.entry_id}_control_heating_2_comfort"
+        )
+        assert entity_id is not None
+        assert float(hass.states.get(entity_id).state) == 22
+        await hass.services.async_call(
+            "number", "set_value", {"entity_id": entity_id, "value": 22.5}, blocking=True
+        )
+        assert write.await_args.args[0].key == "heating_2_comfort"
+        assert write.await_args.args[1] == 22.5
+        await hass.services.async_call(
+            DOMAIN,
+            "set_holiday_program",
+            {"entity_id": entity_id, "start_date": "2027-05-03", "end_date": "2027-05-12"},
+            blocking=True,
+        )
+        holiday.assert_awaited_once_with(date(2027, 5, 3), date(2027, 5, 12))
         await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_stop(force=True)

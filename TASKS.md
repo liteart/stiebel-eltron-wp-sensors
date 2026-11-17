@@ -240,19 +240,22 @@
   - `fix: handle sensor availability and request failures`
 
 ### T16 — ISG capabilities and controls
-- [ ] **T16 (IN_PROGRESS)** Investigate additional ISG readings and verified writable controls
+- [x] **T16 (DONE)** Investigate additional ISG readings and implement writable controls
   **Deliverables**
   - Analyze device pages and document supported settings, including heating circuits
-  - Implement verified readings and controls with tests
+  - Implement validated basic heating, hot water, cooling, party and holiday controls
+  - Identify Heizkreis 1 as Puffer and Heizkreis 2 as Bodenheizung in entity names
   **Validation**
-  - Verify form details against the target ISG and test without changing device settings
+  - Verify form details against read-only target ISG pages; test writes using simulated responses
+  - 29 automated tests and Ruff pass; no real setting was changed
   **Commit**
   - `feat: add verified ISG controls`
   **Investigation so far**
-  - Target ISG uses `save.php` with form-encoded JSON; no write has been sent.
+  - Target ISG uses `save.php` with form-encoded JSON; no physical write was sent.
   - Heating circuit 1 is the buffer; circuit 2 is the building underfloor heating.
   - The target exposes comfort and eco temperatures, cooling options, a party duration,
-    and separate holiday start and end forms. Write verification and entities remain open.
+    and separate holiday start and end forms. Readback verification is implemented; actual
+    physical writes and advanced configuration fields were not tested.
 
 ### T17 — Additional information-page sensors
 - [x] **T17 (DONE)** Read optional energy balance, plant and heat-pump status and analysis pages

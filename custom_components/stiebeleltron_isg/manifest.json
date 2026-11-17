@@ -1,6 +1,6 @@
 {
   "domain": "stiebeleltron_isg",
-  "name": "Stiebel Eltron ISG Sensory Data READONLY",
+  "name": "Stiebel Eltron ISG Sensory Data",
   "codeowners": [],
   "config_flow": true,
   "documentation": "https://github.com/simonhugentobler/homeassistant-stiebeleltron-scraper-plugin",

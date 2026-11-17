@@ -4,13 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .client import StiebelEltronIsgClient
 from .const import CONF_TIMEOUT, DEFAULT_TIMEOUT, DOMAIN, PLATFORMS
-from .coordinator import StiebelEltronIsgDataUpdateCoordinator
+from .controls import IsgControls
+from .coordinator import StiebelEltronIsgControlsCoordinator, StiebelEltronIsgDataUpdateCoordinator
 
 
 @dataclass(slots=True)
@@ -19,6 +24,7 @@ class StiebelEltronIsgRuntimeData:
 
     client: StiebelEltronIsgClient
     coordinator: StiebelEltronIsgDataUpdateCoordinator
+    controls: StiebelEltronIsgControlsCoordinator
 
 
 type StiebelEltronIsgConfigEntry = ConfigEntry[StiebelEltronIsgRuntimeData]
@@ -27,6 +33,29 @@ type StiebelEltronIsgConfigEntry = ConfigEntry[StiebelEltronIsgRuntimeData]
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the integration."""
     hass.data.setdefault(DOMAIN, {})
+
+    async def set_holiday(call) -> None:
+        """Write both dates for the ISG associated with a selected entity."""
+        entity = er.async_get(hass).async_get(call.data["entity_id"])
+        entry = hass.config_entries.async_get_entry(entity.config_entry_id) if entity else None
+        if not entry or entry.domain != DOMAIN or not hasattr(entry, "runtime_data"):
+            raise HomeAssistantError("Select an entity from a loaded ISG integration")
+        await entry.runtime_data.controls.controls.async_set_holiday(
+            call.data["start_date"], call.data["end_date"]
+        )
+
+    hass.services.async_register(
+        DOMAIN,
+        "set_holiday_program",
+        set_holiday,
+        schema=vol.Schema(
+            {
+                vol.Required("entity_id"): cv.entity_id,
+                vol.Required("start_date"): cv.date,
+                vol.Required("end_date"): cv.date,
+            }
+        ),
+    )
     return True
 
 
@@ -42,7 +71,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: StiebelEltronIsgConfigEn
     coordinator = StiebelEltronIsgDataUpdateCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
 
-    entry.runtime_data = StiebelEltronIsgRuntimeData(client=client, coordinator=coordinator)
+    controls = StiebelEltronIsgControlsCoordinator(hass, entry, IsgControls(client))
+    await controls.async_config_entry_first_refresh()
+    entry.runtime_data = StiebelEltronIsgRuntimeData(
+        client=client, coordinator=coordinator, controls=controls
+    )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     return True

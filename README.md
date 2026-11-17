@@ -1,4 +1,4 @@
-# Stiebel Eltron ISG Sensory Data READONLY
+# Stiebel Eltron ISG Sensory Data
 
 Custom Home Assistant integration for Stiebel Eltron heat pumps exposed through the ISG web interface.
 
@@ -13,6 +13,7 @@ The integration always targets the ISG heat pump details page at `http://<host>/
 - HTML scraping of the `WÄRMEPUMPE` and `ANLAGE` details pages
 - Optional readings from energy balance, plant and heat-pump status, and heat-pump analysis
 - Sensor exposure for process data, energy, power consumption, runtime, and starts
+- Device-validated writable settings for heating, hot water, cooling and programs
 - Coordinator-based polling
 - Sanitized diagnostics support
 - Automated tests for parser, client, config flow, diagnostics, and entity mapping
@@ -32,7 +33,7 @@ The integration always targets the ISG heat pump details page at `http://<host>/
 ## Configuration
 
 1. In Home Assistant, open `Settings` -> `Devices & services` -> `Add integration`.
-2. Search for `Stiebel Eltron ISG Sensory Data READONLY`.
+2. Search for `Stiebel Eltron ISG Sensory Data`.
 3. Enter:
    - `Host or IP address`
    - `Username` if your ISG login is enabled
@@ -46,6 +47,33 @@ Notes:
 - After access is established, the integration fetches both `/?s=1,1` and `/?s=1,0` with the same session.
 - Additional information pages are polled sequentially when available; unsupported pages do not
   prevent the main readings from updating. Available readings depend on the ISG and firmware.
+
+### Changing settings
+
+The integration reads and verifies the specific control fields exposed by the ISG. Matching fields
+appear as number, switch, or select entities on the device. Writes are checked against the live form's
+page, field identifier, label, limits, and increment; the integration then reads the value back.
+Unsupported fields are not exposed. The supported fields are:
+
+- Heating circuit 1 (**Puffer**): comfort and eco temperature, heating-curve slope.
+- Heating circuit 2 (**Bodenheizung**): comfort and eco temperature, maximum temperature,
+  heating-curve slope and room influence.
+- Hot water: comfort and eco temperature.
+- Party program: duration from 0 to 24 hours; set 0 to end it.
+- Cooling: enable cooling and cooling circuit 2; circuit 2 room target, mode, cooling-curve slope and
+  start temperature.
+
+These labels reflect the circuit assignments provided for the original installation; other systems
+may use different circuit assignments. Advanced configuration and special on/off temperature fields
+are not included. The selected field identifiers and form layout are verified against the original
+ISG software version; other versions may expose fewer or no controls.
+
+To set the holiday period, call the Home Assistant action
+`stiebeleltron_isg.set_holiday_program`, select any entity of the relevant ISG, and enter start and end
+dates. Both dates are sent together and read back. If confirmation or readback fails, check the ISG
+interface before retrying: the device might already have applied some or all of the change. The
+holiday write was tested with simulated ISG responses, not by changing the physical installation.
+Date ranges outside 2000–2099 or with the end before the start are rejected.
 
 ### Normalized readings and existing entities
 

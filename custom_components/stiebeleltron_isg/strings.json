@@ -1,9 +1,9 @@
 {
-  "title": "Stiebel Eltron ISG Sensory Data READONLY",
+  "title": "Stiebel Eltron ISG Sensory Data",
   "config": {
     "step": {
       "user": {
-        "title": "Set up Stiebel Eltron ISG Sensory Data READONLY",
+        "title": "Set up Stiebel Eltron ISG Sensory Data",
         "description": "Connect to the ISG web interface at the heat pump status page.",
         "data": {
           "host": "Host or IP address",
@@ -14,7 +14,7 @@
         }
       },
       "reconfigure": {
-        "title": "Reconfigure Stiebel Eltron ISG Sensory Data READONLY",
+        "title": "Reconfigure Stiebel Eltron ISG Sensory Data",
         "data": {
           "host": "Host or IP address",
           "username": "Username",
@@ -33,7 +33,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Stiebel Eltron ISG Sensory Data READONLY options",
+        "title": "Stiebel Eltron ISG Sensory Data options",
         "data": {
           "scan_interval": "Scan interval (minutes)",
           "timeout": "Timeout (seconds)"
